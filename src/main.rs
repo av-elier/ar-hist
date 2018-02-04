@@ -6,10 +6,13 @@ extern crate futures;
 extern crate hyper;
 extern crate serde_json;
 extern crate tokio_core;
+extern crate redis;
+extern crate chrono;
 
 use std::error::Error;
 
 mod ar_http;
+mod ar_save;
 
 fn main() {
     let result = get_ar_initiatives();
@@ -29,7 +32,9 @@ fn get_ar_initiatives()-> Result<(), Box<Error>> {
     println!("Getting ar initiatives");
 
     let initiatives = ar_http::get_ar_json_vec()?;
-
     println!("got {:?} initiatives", initiatives.len());
+
+    ar_save::save_initiatives_to_redis(initiatives)?;
+
     Ok(())
 }
