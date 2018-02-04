@@ -1,0 +1,6 @@
+[package]
+name = "ar-hist"
+version = "0.1.0"
+authors = ["av_elier <adelier1111@gmail.com>"]
+
+[dependencies]
