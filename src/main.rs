@@ -8,20 +8,28 @@ extern crate serde_json;
 extern crate tokio_core;
 
 use std::error::Error;
-use serde_json::Value;
 
 mod ar_http;
 
 fn main() {
-    println!("Hello, world!");
-
-    let r: Result<Vec<Value>, Box<Error>> = ar_http::get_ar_json_vec();
-
-    match r {
-        Ok(initiatives) => println!("got {:?} initiatives", initiatives.len()),
+    let result = get_ar_initiatives();
+    match result{
+        Ok(_) => {
+            println!("success");
+            std::process::exit(0)
+        },
         Err(e) => {
-            println!("failed to get initiatives {:?}", e);
-            std::process::exit(1);
+            println!("error {:?}", e);
+            std::process::exit(1)
         },
     }
+}
+
+fn get_ar_initiatives()-> Result<(), Box<Error>> {
+    println!("Getting ar initiatives");
+
+    let initiatives = ar_http::get_ar_json_vec()?;
+
+    println!("got {:?} initiatives", initiatives.len());
+    Ok(())
 }
