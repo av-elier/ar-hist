@@ -8,6 +8,7 @@ extern crate serde_json;
 extern crate tokio_core;
 extern crate redis;
 extern crate chrono;
+extern crate postgres;
 
 use std::error::Error;
 
@@ -34,7 +35,8 @@ fn get_ar_initiatives()-> Result<(), Box<Error>> {
     let initiatives = ar_http::get_ar_json_vec()?;
     println!("got {:?} initiatives", initiatives.len());
 
-    ar_save::save_initiatives_to_redis(initiatives)?;
+    ar_save::save_initiatives_to_postgres(initiatives)?;
+    println!("saving to db succeed");
 
     Ok(())
 }
