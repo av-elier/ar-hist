@@ -5,16 +5,53 @@ use futures::{Future, Stream};
 use hyper::Client;
 use tokio_core::reactor::Core;
 use serde_json;
+use serde_json::Value;
 
+pub fn do_http(page: i32/* , order: i32, aasm_state: String */) -> Result<Vec<Value>, Box<Error>> {
+    let order = 1;
+    let aasm_state = "active";
+    let arurl = format!("http://ar.rostov-gorod.ru/initiatives.json?filter%5Baasm_state%5D={0}&filter%5Binitiative_from%5D=&order={1}&page={2}",
+        aasm_state, order, page);
+
+
+    let mut core = Core::new()?;
+    let client = Client::new(&core.handle());
+
+    let uri = arurl.parse()?;
+    let work = client.get(uri).and_then(|res| {
+        println!("Response: {}", res.status());
+
+        res.body().concat2()
+    }).and_then(move |body| {
+        let v: Vec<Value> =
+            serde_json::from_slice(&body).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        Ok(v)
+    });
+
+    Ok(core.run(work)?)
+}
+
+pub fn get_ar_json_vec() -> Result<Vec<Value>, Box<Error>> {
+    let mut res: Vec<Value> = Vec::new();
+    for i in 1..100 {
+        let mut values = do_http(i)?;
+        if values.len() == 0 {
+            break;
+        }
+        res.append(&mut values);
+    }
+    Ok(res)
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ArStruct {
-    id: i32,
-    user_id: i32,
-    status: String,
     // "id": 1067,
+    id: i32,
     // "user_id": 15590,
+    user_id: i32,
     // "status": "Активна",
+    status: String,
+
     // "poll_attributes": null,
     // "created_at": "2017-12-25T13:10:14.295+03:00",
     // "published_at": "2017-12-27T15:21:51.590+03:00",
@@ -61,30 +98,4 @@ struct ArStruct {
     //   }
     // },
     // "department": null
-}
-
-
-pub fn do_http() -> Result<(), Box<Error>> {
-    let page = 1;
-    let arurl = format!("http://ar.rostov-gorod.ru/initiatives.json?filter%5Baasm_state%5D=active&filter%5Binitiative_from%5D=&order=1&page={0}",
-        page);
-
-
-    let mut core = Core::new()?;
-    let client = Client::new(&core.handle());
-
-    let uri = arurl.parse()?;
-    let work = client.get(uri).and_then(|res| {
-        println!("Response: {}", res.status());
-
-        res.body().concat2()
-    }).and_then(move |body| {
-        let v: Vec<ArStruct> =
-            serde_json::from_slice(&body).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-
-        println!("got {:?} initiatives: {:?}", v.len(), v);
-        Ok(())
-    });
-
-    Ok(core.run(work)?)
 }
