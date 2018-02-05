@@ -1,4 +1,4 @@
-
+use std;
 use std::error::Error;
 use std::io;
 use futures::{Future, Stream};
@@ -9,9 +9,8 @@ use serde_json::Value;
 
 pub fn do_http(page: i32/* , order: i32, aasm_state: String */) -> Result<Vec<Value>, Box<Error>> {
     let order = 1;
-    let aasm_state = "active";
-    let arurl = format!("http://ar.rostov-gorod.ru/initiatives.json?filter%5Baasm_state%5D={0}&filter%5Binitiative_from%5D=&order={1}&page={2}",
-        aasm_state, order, page);
+    let arurl = format!("http://ar.rostov-gorod.ru/initiatives.json?filter%5Binitiative_from%5D=&order={0}&page={1}",
+        order, page);
 
 
     let mut core = Core::new()?;
@@ -19,10 +18,11 @@ pub fn do_http(page: i32/* , order: i32, aasm_state: String */) -> Result<Vec<Va
 
     let uri = arurl.parse()?;
     let work = client.get(uri).and_then(|res| {
-        println!("Response: {}", res.status());
+        println!("page = {}, response = {}", page, res.status());
 
         res.body().concat2()
     }).and_then(move |body| {
+        println!("body head = {}", std::string::String::from_utf8(body.to_vec())?.chars().take(10).collect::<String>());
         let v: Vec<Value> =
             serde_json::from_slice(&body).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
         Ok(v)
@@ -34,11 +34,18 @@ pub fn do_http(page: i32/* , order: i32, aasm_state: String */) -> Result<Vec<Va
 pub fn get_ar_json_vec() -> Result<Vec<Value>, Box<Error>> {
     let mut res: Vec<Value> = Vec::new();
     for i in 1..100 {
-        let mut values = do_http(i)?;
-        if values.len() == 0 {
-            break;
+        for j in 1..5 {
+            let mut values = do_http(i);
+            if let Err(e) = values {
+                continue;
+            } else if let Ok(mut values) = values {
+                if values.len() == 0 {
+                    return Ok(res);
+                }
+                res.append(&mut values);
+                break;
+            }
         }
-        res.append(&mut values);
     }
     Ok(res)
 }
