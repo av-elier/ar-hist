@@ -28,8 +28,13 @@ fn main() {
        .author("av_elier")
        .arg(Arg::with_name("save")
             .long("save")
-            .possible_values(&["no", "postgres", "redis"])
-            .default_value("no")
+            .takes_value(true)
+            .possible_values(&["postgres", "redis"])
+            .help("Disables saving to db"))
+       .arg(Arg::with_name("ar-status")
+            .long("ar-status")
+            .takes_value(true)
+            .possible_values(&["active", "attention", "completed", "considered", "implemented"])
             .help("Disables saving to db"))
        .get_matches();
 
@@ -50,7 +55,7 @@ fn main() {
 fn get_ar_initiatives(matches: ArgMatches)-> Result<(), Box<Error>> {
     info!("Getting ar initiatives");
 
-    let initiatives = ar_http::get_ar_json_vec()?;
+    let initiatives = ar_http::get_ar_json_vec(matches.value_of("ar-status"))?;
     info!("got {:?} initiatives", initiatives.len());
 
     match matches.value_of("save") {

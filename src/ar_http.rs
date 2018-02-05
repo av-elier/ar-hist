@@ -7,10 +7,14 @@ use tokio_core::reactor::Core;
 use serde_json;
 use serde_json::Value;
 
-pub fn do_http(page: i32/* , order: i32, aasm_state: String */) -> Result<Vec<Value>, Box<Error>> {
+pub fn do_http(page: i32, status: Option<&str>) -> Result<Vec<Value>, Box<Error>> {
     let order = 1;
-    let arurl = format!("http://ar.rostov-gorod.ru/initiatives.json?filter%5Binitiative_from%5D=&order={0}&page={1}",
-        order, page);
+    let aasm_state = match status {
+        Some(status) => format!("&filter%5Baasm_state%5D={}", status),
+        None => "".to_string(),
+    };
+    let arurl = format!("http://ar.rostov-gorod.ru/initiatives.json?filter%5Binitiative_from%5D=&order={0}&page={1}{2}",
+        order, page, aasm_state);
 
     let mut core = Core::new()?;
     let client = Client::new(&core.handle());
@@ -30,11 +34,11 @@ pub fn do_http(page: i32/* , order: i32, aasm_state: String */) -> Result<Vec<Va
     Ok(core.run(work)?)
 }
 
-pub fn get_ar_json_vec() -> Result<Vec<Value>, Box<Error>> {
+pub fn get_ar_json_vec(status: Option<&str>) -> Result<Vec<Value>, Box<Error>> {
     let mut res: Vec<Value> = Vec::new();
     for i in 1..100 {
         for _ in 1..5 {
-            let mut values = do_http(i);
+            let mut values = do_http(i, status);
             if let Err(_) = values {
                 continue;
             } else if let Ok(mut values) = values {
