@@ -10,33 +10,38 @@ extern crate redis;
 extern crate chrono;
 extern crate postgres;
 
+#[macro_use]
+extern crate log;
+extern crate env_logger;
+
 use std::error::Error;
 
 mod ar_http;
 mod ar_save;
 
 fn main() {
+    env_logger::init();
     let result = get_ar_initiatives();
     match result{
         Ok(_) => {
-            println!("success");
+            info!("success");
             std::process::exit(0)
         },
         Err(e) => {
-            println!("error {:?}", e);
+            error!("error {:?}", e);
             std::process::exit(1)
         },
     }
 }
 
 fn get_ar_initiatives()-> Result<(), Box<Error>> {
-    println!("Getting ar initiatives");
+    info!("Getting ar initiatives");
 
     let initiatives = ar_http::get_ar_json_vec()?;
-    println!("got {:?} initiatives", initiatives.len());
+    info!("got {:?} initiatives", initiatives.len());
 
     ar_save::save_initiatives_to_postgres(initiatives)?;
-    println!("saving to db succeed");
+    info!("saving to db succeed");
 
     Ok(())
 }

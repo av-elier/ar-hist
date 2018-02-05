@@ -12,17 +12,16 @@ pub fn do_http(page: i32/* , order: i32, aasm_state: String */) -> Result<Vec<Va
     let arurl = format!("http://ar.rostov-gorod.ru/initiatives.json?filter%5Binitiative_from%5D=&order={0}&page={1}",
         order, page);
 
-
     let mut core = Core::new()?;
     let client = Client::new(&core.handle());
 
     let uri = arurl.parse()?;
     let work = client.get(uri).and_then(|res| {
-        println!("page = {}, response = {}", page, res.status());
+        debug!("page = {}, response = {}", page, res.status());
 
         res.body().concat2()
     }).and_then(move |body| {
-        println!("body head = {}", std::string::String::from_utf8(body.to_vec())?.chars().take(10).collect::<String>());
+        debug!("body head = {}", std::string::String::from_utf8(body.to_vec())?.chars().take(10).collect::<String>());
         let v: Vec<Value> =
             serde_json::from_slice(&body).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
         Ok(v)
