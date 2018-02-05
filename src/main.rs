@@ -13,7 +13,9 @@ extern crate postgres;
 #[macro_use]
 extern crate log;
 extern crate env_logger;
+extern crate clap;
 
+use clap::{App, Arg, ArgMatches};
 use std::error::Error;
 
 mod ar_http;
@@ -21,7 +23,18 @@ mod ar_save;
 
 fn main() {
     env_logger::init();
-    let result = get_ar_initiatives();
+    let matches = App::new("ar-hist")
+       .version("0.0.1")
+       .author("av_elier")
+       .arg(Arg::with_name("save")
+            .long("save")
+            .possible_values(&["no", "postgres", "redis"])
+            .default_value("no")
+            .help("Disables saving to db"))
+       .get_matches();
+
+    let result = get_ar_initiatives(matches);
+
     match result{
         Ok(_) => {
             info!("success");
@@ -34,14 +47,17 @@ fn main() {
     }
 }
 
-fn get_ar_initiatives()-> Result<(), Box<Error>> {
+fn get_ar_initiatives(matches: ArgMatches)-> Result<(), Box<Error>> {
     info!("Getting ar initiatives");
 
     let initiatives = ar_http::get_ar_json_vec()?;
     info!("got {:?} initiatives", initiatives.len());
 
-    ar_save::save_initiatives_to_postgres(initiatives)?;
-    info!("saving to db succeed");
+    match matches.value_of("save") {
+        Some("postgres") => { ar_save::save_initiatives_to_postgres(initiatives)?; info!("save to postgres succeed")},
+        Some("redis") => { ar_save::save_initiatives_to_redis(initiatives)?; info!("save to redis succeed")},
+        _ => info!("save to db SKIPPED"),
+    }
 
     Ok(())
 }

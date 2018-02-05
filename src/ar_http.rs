@@ -33,9 +33,9 @@ pub fn do_http(page: i32/* , order: i32, aasm_state: String */) -> Result<Vec<Va
 pub fn get_ar_json_vec() -> Result<Vec<Value>, Box<Error>> {
     let mut res: Vec<Value> = Vec::new();
     for i in 1..100 {
-        for j in 1..5 {
+        for _ in 1..5 {
             let mut values = do_http(i);
-            if let Err(e) = values {
+            if let Err(_) = values {
                 continue;
             } else if let Ok(mut values) = values {
                 if values.len() == 0 {
