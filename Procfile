@@ -1,2 +1,2 @@
-update: ./target/release/ar-hist --save postgres
-debug: ./target/release/ar-hist --ar-status=active
+update: ./target/release/ar-hist download --save postgres
+ar-hist: ./target/release/ar-hist

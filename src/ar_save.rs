@@ -30,14 +30,16 @@ pub fn save_initiatives_to_redis(ins: Vec<serde_json::Value>) -> Result<(), Box<
 pub fn save_initiatives_to_postgres(ins: Vec<serde_json::Value>) -> Result<(), Box<Error>> {
     let postgres_url = env::var("DATABASE_URL")?;
     let conn = postgres::Connection::connect(postgres_url, postgres::TlsMode::None).unwrap();
-    conn.execute("CREATE TABLE IF NOT EXISTS kv (
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS kv (
                     k   VARCHAR PRIMARY KEY,
                     v   VARCHAR NOT NULL
-                  )", &[])?;
+                  )",
+        &[],
+    )?;
 
     let (k, v) = get_key_and_value(ins)?;
 
-    conn.execute("INSERT INTO kv (k, v) VALUES ($1, $2)",
-                 &[&k, &v])?;
+    conn.execute("INSERT INTO kv (k, v) VALUES ($1, $2)", &[&k, &v])?;
     Ok(())
 }

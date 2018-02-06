@@ -20,16 +20,25 @@ pub fn do_http(page: i32, status: Option<&str>) -> Result<Vec<Value>, Box<Error>
     let client = Client::new(&core.handle());
 
     let uri = arurl.parse()?;
-    let work = client.get(uri).and_then(|res| {
-        debug!("page = {}, response = {}", page, res.status());
+    let work = client
+        .get(uri)
+        .and_then(|res| {
+            debug!("page = {}, response = {}", page, res.status());
 
-        res.body().concat2()
-    }).and_then(move |body| {
-        debug!("body head = {}", std::string::String::from_utf8(body.to_vec())?.chars().take(10).collect::<String>());
-        let v: Vec<Value> =
-            serde_json::from_slice(&body).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-        Ok(v)
-    });
+            res.body().concat2()
+        })
+        .and_then(move |body| {
+            debug!(
+                "body head = {}",
+                std::string::String::from_utf8(body.to_vec())?
+                    .chars()
+                    .take(10)
+                    .collect::<String>()
+            );
+            let v: Vec<Value> =
+                serde_json::from_slice(&body).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            Ok(v)
+        });
 
     Ok(core.run(work)?)
 }
@@ -61,7 +70,6 @@ struct ArStruct {
     user_id: i32,
     // "status": "Активна",
     status: String,
-
     // "poll_attributes": null,
     // "created_at": "2017-12-25T13:10:14.295+03:00",
     // "published_at": "2017-12-27T15:21:51.590+03:00",
