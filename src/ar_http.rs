@@ -9,11 +9,11 @@ use tokio_core::reactor::Core;
 use serde;
 use serde_json;
 
-fn ar_http_future<'a>(
+fn ar_http_future(
     client: Client<HttpConnector>,
     page: i32,
-    status: Option<&'a str>,
-) -> Result<Box<Future<Item = Box<&'a str>, Error = HError>>, Box<Error>> {
+    status: Option<&str>,
+) -> Result<Box<Future<Item = Vec<serde_json::Value>, Error = HError>>, Box<Error>> {
     let order = 1;
     let aasm_state = match status {
         Some(status) => format!("&filter%5Baasm_state%5D={}", status),
@@ -23,7 +23,7 @@ fn ar_http_future<'a>(
         order, page, aasm_state);
     let uri = arurl.parse()?;
 
-    let work: Box<Future<Item = Box<&str>, Error = HError>> = Box::new(
+    let work = Box::new(
         client
             .get(uri)
             .and_then(move |res| {
@@ -37,38 +37,30 @@ fn ar_http_future<'a>(
                     "body head = {}",
                     ar_json.to_string().chars().take(10).collect::<String>()
                 );
-                Ok(Box::new(ar_json))
+                let tpd: Vec<serde_json::Value> = serde_json::from_slice(&body)
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+                Ok(tpd)
             }),
     );
     Ok(Box::new(work))
 }
 
-fn do_ar_work(page: i32, status: Option<&str>) -> Result<Box<&str>, Box<Error>> {
+fn do_ar_work(page: i32, status: Option<&str>) -> Result<Vec<serde_json::Value>, Box<Error>> {
     let mut core = Core::new()?;
     let client = Client::new(&core.handle());
     let work = ar_http_future(client, page, status)?;
-    let body: Box<&str> = core.run(work)?;
+    let body: Vec<serde_json::Value> = core.run(work)?;
     Ok(body)
 }
 
-fn do_ar_typed<'a, T>(page: i32, status: Option<&'a str>) -> Result<Vec<T>, Box<Error>>
+pub fn get_ar_json_vec(status: Option<&str>) -> Result<Vec<serde_json::Value>, Box<Error>>
 where
-    T: serde::Deserialize<'a>,
+    // T: serde::Deserialize<>,
 {
-    let ar_json: Box<&'a str> = do_ar_work(page, status)?;
-    let tpd: Vec<T> =
-        serde_json::from_str(*ar_json).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-    Ok(tpd)
-}
-
-pub fn get_ar_json_vec<'a, T>(status: Option<&'a str>) -> Result<Vec<T>, Box<Error>>
-where
-    T: serde::Deserialize<'a>,
-{
-    let mut res: Vec<T> = Vec::new();
+    let mut res: Vec<serde_json::Value> = Vec::new();
     for i in 1..100 {
         for _ in 1..5 {
-            let values = do_ar_typed(i, status);
+            let values = do_ar_work(i, status);
             if let Err(_) = values {
                 continue;
             } else if let Ok(mut values) = values {

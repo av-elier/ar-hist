@@ -46,7 +46,7 @@ fn main() {
 fn get_ar_initiatives<'a>(matches: ArgMatches<'a>) -> Result<(), Box<Error>> {
     info!("Getting ar initiatives");
 
-    let initiatives: Vec<Box<serde_json::Value>> =
+    let initiatives: Vec<serde_json::Value> =
         ar_http::get_ar_json_vec(matches.value_of("ar-status"))?;
     info!("got {:?} initiatives", initiatives.len());
 
