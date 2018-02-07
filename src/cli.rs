@@ -10,7 +10,7 @@ pub fn ar_hist_app() -> App<'static, 'static> {
                     Arg::with_name("save")
                         .long("save")
                         .takes_value(true)
-                        .possible_values(&["postgres", "redis"])
+                        .possible_values(&["postgres", "redis", "stdout"])
                         .help("Enable saving to db"),
                 )
                 .arg(

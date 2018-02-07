@@ -1,19 +1,21 @@
 use std;
 use std::error::Error;
 use std::io;
-use futures;
 use futures::{Future, Stream};
-use hyper::{Body, Chunk, Client, Error as HError, Uri};
+use hyper::{Chunk, Client, Error as HError};
 use hyper::client::HttpConnector;
 use tokio_core::reactor::Core;
 use serde;
 use serde_json;
 
-fn ar_http_future(
+fn ar_http_future<'a, T>(
     client: Client<HttpConnector>,
     page: i32,
     status: Option<&str>,
-) -> Result<Box<Future<Item = Vec<serde_json::Value>, Error = HError>>, Box<Error>> {
+) -> Result<Box<Future<Item = Vec<T>, Error = HError>>, Box<Error>>
+where
+    for<'de> T: serde::Deserialize<'de> + 'static,
+{
     let order = 1;
     let aasm_state = match status {
         Some(status) => format!("&filter%5Baasm_state%5D={}", status),
@@ -31,13 +33,13 @@ fn ar_http_future(
 
                 res.body().concat2()
             })
-            .and_then(move |body| {
+            .and_then(move |body: Chunk| {
                 let ar_json: &str = std::str::from_utf8(&body)?;
                 debug!(
                     "body head = {}",
                     ar_json.to_string().chars().take(10).collect::<String>()
                 );
-                let tpd: Vec<serde_json::Value> = serde_json::from_slice(&body)
+                let tpd: Vec<T> = serde_json::from_slice(&body)
                     .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
                 Ok(tpd)
             }),
@@ -45,22 +47,25 @@ fn ar_http_future(
     Ok(Box::new(work))
 }
 
-fn do_ar_work(page: i32, status: Option<&str>) -> Result<Vec<serde_json::Value>, Box<Error>> {
+fn do_ar_work<'a, T>(page: i32, status: Option<&str>) -> Result<Vec<T>, Box<Error>>
+where
+    for<'de> T: serde::Deserialize<'de> + 'static,
+{
     let mut core = Core::new()?;
     let client = Client::new(&core.handle());
-    let work = ar_http_future(client, page, status)?;
-    let body: Vec<serde_json::Value> = core.run(work)?;
+    let work = ar_http_future::<T>(client, page, status)?;
+    let body: Vec<T> = core.run(work)?;
     Ok(body)
 }
 
-pub fn get_ar_json_vec(status: Option<&str>) -> Result<Vec<serde_json::Value>, Box<Error>>
+pub fn get_ar_json_vec<T>(status: Option<&str>) -> Result<Vec<T>, Box<Error>>
 where
-    // T: serde::Deserialize<>,
+    for<'de> T: serde::Deserialize<'de> + 'static,
 {
-    let mut res: Vec<serde_json::Value> = Vec::new();
+    let mut res: Vec<T> = Vec::new();
     for i in 1..100 {
         for _ in 1..5 {
-            let values = do_ar_work(i, status);
+            let values = do_ar_work::<T>(i, status);
             if let Err(_) = values {
                 continue;
             } else if let Ok(mut values) = values {
@@ -76,7 +81,7 @@ where
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct ArStruct {
+pub struct ArStruct {
     // "id": 1067,
     id: i32,
     // "user_id": 15590,

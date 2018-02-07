@@ -59,6 +59,7 @@ fn get_ar_initiatives<'a>(matches: ArgMatches<'a>) -> Result<(), Box<Error>> {
             ar_save::save_initiatives_to_redis(initiatives)?;
             info!("save to redis succeed")
         }
+        Some("stdout") => println!("{:?}", initiatives),
         _ => info!("save to db SKIPPED"),
     }
 
