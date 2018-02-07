@@ -15,41 +15,16 @@ extern crate env_logger;
 #[macro_use]
 extern crate log;
 
-use clap::{App, Arg, ArgMatches, SubCommand};
+use clap::ArgMatches;
 use std::error::Error;
 
 mod ar_http;
 mod ar_save;
+mod cli;
 
 fn main() {
     env_logger::init();
-    let matches = App::new("ar-hist")
-        .version("0.0.1")
-        .author("av_elier")
-        .subcommand(
-            SubCommand::with_name("download")
-                .arg(
-                    Arg::with_name("save")
-                        .long("save")
-                        .takes_value(true)
-                        .possible_values(&["postgres", "redis"])
-                        .help("Disables saving to db"),
-                )
-                .arg(
-                    Arg::with_name("ar-status")
-                        .long("ar-status")
-                        .takes_value(true)
-                        .possible_values(&[
-                            "active",
-                            "attention",
-                            "completed",
-                            "considered",
-                            "implemented",
-                        ])
-                        .help("Disables saving to db"),
-                ),
-        )
-        .get_matches();
+    let matches = cli::ar_hist_app().get_matches();
 
     let result = match matches.subcommand {
         Some(subcmd) => get_ar_initiatives(subcmd.matches),
@@ -68,10 +43,11 @@ fn main() {
     }
 }
 
-fn get_ar_initiatives(matches: ArgMatches) -> Result<(), Box<Error>> {
+fn get_ar_initiatives<'a>(matches: ArgMatches<'a>) -> Result<(), Box<Error>> {
     info!("Getting ar initiatives");
 
-    let initiatives = ar_http::get_ar_json_vec(matches.value_of("ar-status"))?;
+    let initiatives: Vec<Box<serde_json::Value>> =
+        ar_http::get_ar_json_vec(matches.value_of("ar-status"))?;
     info!("got {:?} initiatives", initiatives.len());
 
     match matches.value_of("save") {

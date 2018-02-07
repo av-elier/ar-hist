@@ -1,13 +1,19 @@
 use std;
 use std::error::Error;
 use std::io;
+use futures;
 use futures::{Future, Stream};
-use hyper::Client;
+use hyper::{Body, Chunk, Client, Error as HError, Uri};
+use hyper::client::HttpConnector;
 use tokio_core::reactor::Core;
+use serde;
 use serde_json;
-use serde_json::Value;
 
-pub fn do_http(page: i32, status: Option<&str>) -> Result<Vec<Value>, Box<Error>> {
+fn ar_http_future<'a>(
+    client: Client<HttpConnector>,
+    page: i32,
+    status: Option<&'a str>,
+) -> Result<Box<Future<Item = Box<&'a str>, Error = HError>>, Box<Error>> {
     let order = 1;
     let aasm_state = match status {
         Some(status) => format!("&filter%5Baasm_state%5D={}", status),
@@ -15,39 +21,54 @@ pub fn do_http(page: i32, status: Option<&str>) -> Result<Vec<Value>, Box<Error>
     };
     let arurl = format!("http://ar.rostov-gorod.ru/initiatives.json?filter%5Binitiative_from%5D=&order={0}&page={1}{2}",
         order, page, aasm_state);
-
-    let mut core = Core::new()?;
-    let client = Client::new(&core.handle());
-
     let uri = arurl.parse()?;
-    let work = client
-        .get(uri)
-        .and_then(|res| {
-            debug!("page = {}, response = {}", page, res.status());
 
-            res.body().concat2()
-        })
-        .and_then(move |body| {
-            debug!(
-                "body head = {}",
-                std::string::String::from_utf8(body.to_vec())?
-                    .chars()
-                    .take(10)
-                    .collect::<String>()
-            );
-            let v: Vec<Value> =
-                serde_json::from_slice(&body).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-            Ok(v)
-        });
+    let work: Box<Future<Item = Box<&str>, Error = HError>> = Box::new(
+        client
+            .get(uri)
+            .and_then(move |res| {
+                debug!("page = {}, response = {}", page, res.status());
 
-    Ok(core.run(work)?)
+                res.body().concat2()
+            })
+            .and_then(move |body| {
+                let ar_json: &str = std::str::from_utf8(&body)?;
+                debug!(
+                    "body head = {}",
+                    ar_json.to_string().chars().take(10).collect::<String>()
+                );
+                Ok(Box::new(ar_json))
+            }),
+    );
+    Ok(Box::new(work))
 }
 
-pub fn get_ar_json_vec(status: Option<&str>) -> Result<Vec<Value>, Box<Error>> {
-    let mut res: Vec<Value> = Vec::new();
+fn do_ar_work(page: i32, status: Option<&str>) -> Result<Box<&str>, Box<Error>> {
+    let mut core = Core::new()?;
+    let client = Client::new(&core.handle());
+    let work = ar_http_future(client, page, status)?;
+    let body: Box<&str> = core.run(work)?;
+    Ok(body)
+}
+
+fn do_ar_typed<'a, T>(page: i32, status: Option<&'a str>) -> Result<Vec<T>, Box<Error>>
+where
+    T: serde::Deserialize<'a>,
+{
+    let ar_json: Box<&'a str> = do_ar_work(page, status)?;
+    let tpd: Vec<T> =
+        serde_json::from_str(*ar_json).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+    Ok(tpd)
+}
+
+pub fn get_ar_json_vec<'a, T>(status: Option<&'a str>) -> Result<Vec<T>, Box<Error>>
+where
+    T: serde::Deserialize<'a>,
+{
+    let mut res: Vec<T> = Vec::new();
     for i in 1..100 {
         for _ in 1..5 {
-            let mut values = do_http(i, status);
+            let values = do_ar_typed(i, status);
             if let Err(_) = values {
                 continue;
             } else if let Ok(mut values) = values {
