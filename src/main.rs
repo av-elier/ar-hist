@@ -18,6 +18,7 @@ extern crate log;
 use clap::ArgMatches;
 use std::error::Error;
 
+mod ar_types;
 mod ar_http;
 mod ar_save;
 mod cli;
@@ -29,9 +30,9 @@ fn main() {
     let result = match matches.subcommand {
         Some(subcmd) => {
             if subcmd.matches.is_present("typed") {
-                get_ar_initiatives::<Vec<ar_http::ArStruct>>(subcmd.matches)
+                get_ar_initiatives::<ar_types::Initiative>(subcmd.matches)
             } else {
-                get_ar_initiatives::<Vec<serde_json::Value>>(subcmd.matches)
+                get_ar_initiatives::<serde_json::Value>(subcmd.matches)
             }
         }
         _ => Ok(error!("unknown cli")),
