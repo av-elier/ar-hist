@@ -19,9 +19,9 @@ pub fn ar_hist_app() -> App<'static, 'static> {
                         .help("Enable saving to db"),
                 )
                 .arg(
-                    Arg::with_name("table-name")
-                        .long("pg-table")
-                        .default_value("kv_debug")
+                    Arg::with_name("pg-table-name")
+                        .long("pg-table-name")
+                        .required_if("save", "postgres")
                         .takes_value(true)
                         .help("A postgres table name to save data to"),
                 )

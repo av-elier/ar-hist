@@ -63,7 +63,10 @@ where
 
     match matches.value_of("save") {
         Some("postgres") => {
-            ar_save::save_initiatives_to_postgres(initiatives)?;
+            let table_name = matches
+                .value_of("pg-table-name")
+                .expect("it supposed to be required arg");
+            ar_save::save_initiatives_to_postgres(initiatives, table_name)?;
             info!("save to postgres succeed")
         }
         Some("redis") => {

@@ -34,18 +34,18 @@ where
     Ok(())
 }
 
-pub fn save_initiatives_to_postgres<T>(ins: Vec<T>) -> Result<(), Box<Error>>
+pub fn save_initiatives_to_postgres<T>(ins: Vec<T>, table_name: &str) -> Result<(), Box<Error>>
 where
     T: Serialize,
 {
     let postgres_url = env::var("DATABASE_URL")?;
     let conn = postgres::Connection::connect(postgres_url, postgres::TlsMode::None).unwrap();
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS kv (
+        "CREATE TABLE IF NOT EXISTS $1 (
                     k   VARCHAR PRIMARY KEY,
                     v   VARCHAR NOT NULL
                   )",
-        &[],
+        &[&table_name],
     )?;
 
     let (k, v) = get_key_and_value(ins)?;
