@@ -41,11 +41,14 @@ where
     let postgres_url = env::var("DATABASE_URL")?;
     let conn = postgres::Connection::connect(postgres_url, postgres::TlsMode::None).unwrap();
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS $1 (
+        format!(
+            "CREATE TABLE IF NOT EXISTS {} (
                     k   VARCHAR PRIMARY KEY,
                     v   VARCHAR NOT NULL
                   )",
-        &[&table_name],
+            table_name
+        ).as_str(),
+        &[],
     )?;
 
     let (k, v) = get_key_and_value(ins)?;
