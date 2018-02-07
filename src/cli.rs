@@ -7,6 +7,11 @@ pub fn ar_hist_app() -> App<'static, 'static> {
         .subcommand(
             SubCommand::with_name("download")
                 .arg(
+                    Arg::with_name("typed")
+                        .long("typed")
+                        .help("Parse initiatives on download. WARNING: this can ignore some data"),
+                )
+                .arg(
                     Arg::with_name("save")
                         .long("save")
                         .takes_value(true)

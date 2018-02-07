@@ -27,7 +27,13 @@ fn main() {
     let matches = cli::ar_hist_app().get_matches();
 
     let result = match matches.subcommand {
-        Some(subcmd) => get_ar_initiatives(subcmd.matches),
+        Some(subcmd) => {
+            if subcmd.matches.is_present("typed") {
+                get_ar_initiatives::<Vec<ar_http::ArStruct>>(subcmd.matches)
+            } else {
+                get_ar_initiatives::<Vec<serde_json::Value>>(subcmd.matches)
+            }
+        }
         _ => Ok(error!("unknown cli")),
     };
 
@@ -43,11 +49,15 @@ fn main() {
     }
 }
 
-fn get_ar_initiatives<'a>(matches: ArgMatches<'a>) -> Result<(), Box<Error>> {
+fn get_ar_initiatives<T>(matches: ArgMatches<'static>) -> Result<(), Box<Error>>
+where
+    for<'de> T: serde::Deserialize<'de> + 'static,
+    for<'de> T: serde::Serialize,
+    T: std::fmt::Debug,
+{
     info!("Getting ar initiatives");
 
-    let initiatives: Vec<serde_json::Value> =
-        ar_http::get_ar_json_vec(matches.value_of("ar-status"))?;
+    let initiatives: Vec<T> = ar_http::get_ar_json_vec(matches.value_of("ar-status"))?;
     info!("got {:?} initiatives", initiatives.len());
 
     match matches.value_of("save") {
