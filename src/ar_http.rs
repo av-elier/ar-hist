@@ -9,7 +9,7 @@ use serde;
 use serde_json;
 
 fn ar_http_future<'a, T>(
-    client: Client<HttpConnector>,
+    client: &Client<HttpConnector>,
     page: i32,
     status: Option<&str>,
 ) -> Result<Box<Future<Item = Vec<T>, Error = HError>>, Box<Error>>
@@ -47,13 +47,16 @@ where
     Ok(Box::new(work))
 }
 
-fn do_ar_work<'a, T>(page: i32, status: Option<&str>) -> Result<Vec<T>, Box<Error>>
+fn do_ar_work<'a, T>(
+    core: &mut Core,
+    client: &Client<HttpConnector>,
+    page: i32,
+    status: Option<&str>,
+) -> Result<Vec<T>, Box<Error>>
 where
     for<'de> T: serde::Deserialize<'de> + 'static,
 {
-    let mut core = Core::new()?;
-    let client = Client::new(&core.handle());
-    let work = ar_http_future::<T>(client, page, status)?;
+    let work = ar_http_future::<T>(&client, page, status)?;
     let body: Vec<T> = core.run(work)?;
     Ok(body)
 }
@@ -62,10 +65,12 @@ pub fn get_ar_json_vec<T>(status: Option<&str>) -> Result<Vec<T>, Box<Error>>
 where
     for<'de> T: serde::Deserialize<'de> + 'static,
 {
+    let mut core = Core::new()?;
+    let client = Client::new(&core.handle());
     let mut res: Vec<T> = Vec::new();
     for i in 1..100 {
         for try in 1..5 {
-            let values = do_ar_work::<T>(i, status);
+            let values = do_ar_work::<T>(&mut core, &client, i, status);
             if let Err(err) = values {
                 error!("error in downloading, try={}, err={:?}", try, err);
                 continue;
