@@ -25,17 +25,22 @@ mod cli;
 
 fn main() {
     env_logger::init();
-    let matches = cli::ar_hist_app().get_matches();
+    let app = cli::ar_hist_app();
+    let matches = app.get_matches();
 
     let result = match matches.subcommand {
         Some(subcmd) => {
-            if subcmd.matches.is_present("typed") {
-                get_ar_initiatives::<ar_types::Initiative>(subcmd.matches)
+            if subcmd.name == "download" {
+                if subcmd.matches.is_present("typed") {
+                    get_ar_initiatives::<ar_types::Initiative>(subcmd.matches)
+                } else {
+                    get_ar_initiatives::<serde_json::Value>(subcmd.matches)
+                }
             } else {
-                get_ar_initiatives::<serde_json::Value>(subcmd.matches)
+                panic!("unknown cli")
             }
         }
-        _ => Ok(error!("unknown cli")),
+        _ => panic!("unknown cli"),
     };
 
     match result {
