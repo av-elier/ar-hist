@@ -6,6 +6,7 @@ use serde::Serialize;
 use serde_json;
 use chrono;
 use postgres;
+use openssl::ssl::{SslConnector, SslConnectorBuilder, SslMethod, SSL_VERIFY_NONE};
 
 fn get_key_and_value<T>(ins: Vec<T>) -> Result<(String, String), Box<Error>>
 where
@@ -64,16 +65,27 @@ pub struct ArPg {
 impl ArPg {
     pub fn new() -> Result<ArPg, Box<Error>> {
         let postgres_url = env::var("DATABASE_URL")?;
-        let tls = postgres::tls::native_tls::NativeTls::new().unwrap();
-        let conn = postgres::Connection::connect(postgres_url, postgres::TlsMode::Prefer(&tls))?;
+
+        let mut builder = SslConnectorBuilder::new(SslMethod::tls()).unwrap();
+        builder.set_verify(SSL_VERIFY_NONE);
+        let conn: SslConnector = builder.build();
+        let pg_connector = postgres::tls::openssl::OpenSsl::from(conn);
+
+        info!("about to connect to postgres");
+        let conn =
+            postgres::Connection::connect(postgres_url, postgres::TlsMode::Prefer(&pg_connector))?;
+        info!("connected to postgres succeed! {:?}", conn);
         Ok(ArPg { conn: conn })
     }
 
     pub fn get_kv_postgres(&self, table: &str) -> Result<Vec<(String, String)>, Box<Error>> {
-        let rows = self.conn
-            .query(format!("SELECT (k, v) FROM {}", table).as_str(), &[])?;
+        debug!("selecting rows");
+        let rows: postgres::rows::Rows = self.conn
+            .query(format!("SELECT k, v FROM {}", table).as_str(), &[])?;
+        debug!("selected rows {:?}", rows.len());
         let mut res: Vec<(String, String)> = vec![];
         for row in rows.iter() {
+            let row: postgres::rows::Row = row;
             let k: String = row.get(0);
             let v: String = row.get(1);
             res.push((k, v));
@@ -96,6 +108,7 @@ impl ArPg {
             ).as_str(),
             &[],
         )?;
+        debug!("inserting rows");
         let transaction = self.conn.transaction()?;
         for (k, v) in kvs {
             transaction.execute(
@@ -104,6 +117,7 @@ impl ArPg {
             )?;
         }
         transaction.commit()?;
+        debug!("inserting rows - commmitted");
         Ok(())
     }
 }

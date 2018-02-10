@@ -46,18 +46,21 @@ pub fn ar_hist_app() -> App<'static, 'static> {
                     Arg::with_name("action")
                         .long("action")
                         .required(true)
+                        .takes_value(true)
                         .possible_values(&["filter-unchanged"])
                         .help("filter-unchanged: removes exactly same initiatives from latter snapshot")
                 )
                 .arg(
                     Arg::with_name("pg-table-orig")
                         .long("pg-table-orig")
+                        .takes_value(true)
                         .required(true)
                         .help("a table to get initiatives from"),
                 )
                 .arg(
                     Arg::with_name("pg-table-dest")
                         .long("pg-table-dest")
+                        .takes_value(true)
                         .help("destination to save to. If not specified, just stdout"),
                 ),
         );
