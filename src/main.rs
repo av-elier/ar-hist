@@ -23,6 +23,7 @@ mod ar_types;
 mod ar_http;
 mod ar_store;
 mod ar_filter;
+mod ar_pg;
 mod cli;
 
 fn main() {
@@ -84,7 +85,7 @@ where
 }
 
 fn migrate_initiatives(matches: ArgMatches) -> Result<(), Box<Error>> {
-    let pg = ar_store::ArPg::new()?;
+    let pg = ar_pg::ArPg::new()?;
     let pg_table_orig = matches
         .value_of("pg-table-orig")
         .expect("no --pg-table-orig value");
