@@ -39,6 +39,27 @@ pub fn ar_hist_app() -> App<'static, 'static> {
                         .help("ar initiative status filter"),
                 ),
         )
-        .subcommand(SubCommand::with_name("analyze"));
+        .subcommand(SubCommand::with_name("analyze")) // TODO: last day top gainers by votes, views, shares. Option to email (or telegram) results
+        .subcommand(
+            SubCommand::with_name("migrate")
+                .arg(
+                    Arg::with_name("action")
+                        .long("action")
+                        .required(true)
+                        .possible_values(&["filter-unchanged"])
+                        .help("filter-unchanged: removes exactly same initiatives from latter snapshot")
+                )
+                .arg(
+                    Arg::with_name("pg-table-orig")
+                        .long("pg-table-orig")
+                        .required(true)
+                        .help("a table to get initiatives from"),
+                )
+                .arg(
+                    Arg::with_name("pg-table-dest")
+                        .long("pg-table-dest")
+                        .help("destination to save to. If not specified, just stdout"),
+                ),
+        );
     app
 }

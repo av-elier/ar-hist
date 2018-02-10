@@ -1,3 +1,4 @@
+#![feature(iterator_try_fold)]
 #[macro_use]
 extern crate serde_derive;
 
@@ -20,7 +21,8 @@ use std::error::Error;
 
 mod ar_types;
 mod ar_http;
-mod ar_save;
+mod ar_store;
+mod ar_filter;
 mod cli;
 
 fn main() {
@@ -29,18 +31,16 @@ fn main() {
     let matches = app.get_matches();
 
     let result = match matches.subcommand {
-        Some(subcmd) => {
-            if subcmd.name == "download" {
-                if subcmd.matches.is_present("typed") {
-                    get_ar_initiatives::<ar_types::Initiative>(subcmd.matches)
-                } else {
-                    get_ar_initiatives::<serde_json::Value>(subcmd.matches)
-                }
+        Some(subcmd) => match subcmd.name.as_ref() {
+            "download" => if subcmd.matches.is_present("typed") {
+                download_initiatives::<ar_types::Initiative>(subcmd.matches)
             } else {
-                panic!("unknown cli")
-            }
-        }
-        _ => panic!("unknown cli"),
+                download_initiatives::<serde_json::Value>(subcmd.matches)
+            },
+            "migrate" => migrate_initiatives(subcmd.matches),
+            _ => panic!("impossible cli"),
+        },
+        _ => Ok(error!("unknown cli")),
     };
 
     match result {
@@ -55,7 +55,7 @@ fn main() {
     }
 }
 
-fn get_ar_initiatives<T>(matches: ArgMatches<'static>) -> Result<(), Box<Error>>
+fn download_initiatives<T>(matches: ArgMatches<'static>) -> Result<(), Box<Error>>
 where
     for<'de> T: serde::Deserialize<'de> + 'static,
     for<'de> T: serde::Serialize,
@@ -68,14 +68,12 @@ where
 
     match matches.value_of("save") {
         Some("postgres") => {
-            let table_name = matches
-                .value_of("pg-table-name")
-                .expect("it supposed to be required arg");
-            ar_save::save_initiatives_to_postgres(initiatives, table_name)?;
+            let table_name = matches.value_of("pg-table-name").expect("");
+            ar_store::save_initiatives_to_postgres(initiatives, table_name)?;
             info!("save to postgres succeed")
         }
         Some("redis") => {
-            ar_save::save_initiatives_to_redis(initiatives)?;
+            ar_store::save_initiatives_to_redis(initiatives)?;
             info!("save to redis succeed")
         }
         Some("stdout") => println!("{:?}", initiatives),
@@ -83,4 +81,23 @@ where
     }
 
     Ok(())
+}
+
+fn migrate_initiatives(matches: ArgMatches) -> Result<(), Box<Error>> {
+    let pg_table_orig = matches.value_of("pg-table-orig").expect("");
+    let pg_table_dest = matches.value_of("pg-table-dest");
+    Ok(match matches.value_of("action").expect("") {
+        "filter-unchanged" => {
+            let orig: Vec<(&str, &str)> = ar_store::get_kv_postgres(pg_table_orig)?;
+            let filtered = ar_filter::filter_spahshots(orig)?;
+            if let Some(pg_table_dest) = pg_table_dest {
+                ar_store::set_kv_postgres(pg_table_dest, filtered)?;
+            } else {
+                for (k, v) in filtered {
+                    println!("{:?}: {:?}", k, v);
+                }
+            }
+        }
+        _ => panic!("unknown cli"),
+    })
 }

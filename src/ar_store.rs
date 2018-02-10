@@ -56,3 +56,10 @@ where
     conn.execute("INSERT INTO kv (k, v) VALUES ($1, $2)", &[&k, &v])?;
     Ok(())
 }
+
+pub fn get_kv_postgres(table: &str) -> Result<Vec<(&str, &str)>, Box<Error>> {
+    Ok(vec![])
+}
+pub fn set_kv_postgres(table: &str, kvs: Vec<(String, String)>) -> Result<(), Box<Error>> {
+    Ok(())
+}
