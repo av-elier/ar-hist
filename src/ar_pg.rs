@@ -57,7 +57,7 @@ impl ArPg {
         let transaction = self.conn.transaction()?;
         for (k, v) in kvs {
             transaction.execute(
-                format!("INSERT INTO {} (k, v) VALUES ($1, $2)", table).as_str(),
+                format!("INSERT INTO {} (k, v) VALUES ($1, $2) ON CONFLICT (k) DO UPDATE SET v=EXCLUDED.v", table).as_str(),
                 &[&k, &v],
             )?;
         }
