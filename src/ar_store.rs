@@ -39,7 +39,7 @@ where
     T: Serialize,
 {
     let postgres_url = env::var("DATABASE_URL")?;
-    let conn = postgres::Connection::connect(postgres_url, postgres::TlsMode::None).unwrap();
+    let conn = postgres::Connection::connect(postgres_url, postgres::TlsMode::None)?;
     conn.execute(
         format!(
             "CREATE TABLE IF NOT EXISTS {} (
@@ -57,9 +57,53 @@ where
     Ok(())
 }
 
-pub fn get_kv_postgres(table: &str) -> Result<Vec<(&str, &str)>, Box<Error>> {
-    Ok(vec![])
+pub struct ArPg {
+    conn: postgres::Connection,
 }
-pub fn set_kv_postgres(table: &str, kvs: Vec<(String, String)>) -> Result<(), Box<Error>> {
-    Ok(())
+
+impl ArPg {
+    pub fn new() -> Result<ArPg, Box<Error>> {
+        let postgres_url = env::var("DATABASE_URL")?;
+        let tls = postgres::tls::native_tls::NativeTls::new().unwrap();
+        let conn = postgres::Connection::connect(postgres_url, postgres::TlsMode::Prefer(&tls))?;
+        Ok(ArPg { conn: conn })
+    }
+
+    pub fn get_kv_postgres(&self, table: &str) -> Result<Vec<(String, String)>, Box<Error>> {
+        let rows = self.conn
+            .query(format!("SELECT (k, v) FROM {}", table).as_str(), &[])?;
+        let mut res: Vec<(String, String)> = vec![];
+        for row in rows.iter() {
+            let k: String = row.get(0);
+            let v: String = row.get(1);
+            res.push((k, v));
+        }
+        Ok(res)
+    }
+
+    pub fn set_kv_postgres(
+        &self,
+        table: &str,
+        kvs: Vec<(String, String)>,
+    ) -> Result<(), Box<Error>> {
+        self.conn.execute(
+            format!(
+                "CREATE TABLE IF NOT EXISTS {} (
+                    k   VARCHAR PRIMARY KEY,
+                    v   VARCHAR NOT NULL
+                  )",
+                table
+            ).as_str(),
+            &[],
+        )?;
+        let transaction = self.conn.transaction()?;
+        for (k, v) in kvs {
+            transaction.execute(
+                format!("INSERT INTO {} (k, v) VALUES ($1, $2)", table).as_str(),
+                &[&k, &v],
+            )?;
+        }
+        transaction.commit()?;
+        Ok(())
+    }
 }

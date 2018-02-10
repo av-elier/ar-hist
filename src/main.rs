@@ -3,18 +3,17 @@
 extern crate serde_derive;
 
 extern crate chrono;
+extern crate clap;
+extern crate env_logger;
 extern crate futures;
 extern crate hyper;
+#[macro_use]
+extern crate log;
 extern crate postgres;
 extern crate redis;
 extern crate serde;
 extern crate serde_json;
 extern crate tokio_core;
-
-extern crate clap;
-extern crate env_logger;
-#[macro_use]
-extern crate log;
 
 use clap::ArgMatches;
 use std::error::Error;
@@ -84,14 +83,15 @@ where
 }
 
 fn migrate_initiatives(matches: ArgMatches) -> Result<(), Box<Error>> {
-    let pg_table_orig = matches.value_of("pg-table-orig").expect("");
+    let pg = ar_store::ArPg::new()?;
+    let pg_table_orig = matches.value_of("pg-table-orig").unwrap();
     let pg_table_dest = matches.value_of("pg-table-dest");
     Ok(match matches.value_of("action").expect("") {
         "filter-unchanged" => {
-            let orig: Vec<(&str, &str)> = ar_store::get_kv_postgres(pg_table_orig)?;
+            let orig: Vec<(String, String)> = pg.get_kv_postgres(pg_table_orig)?;
             let filtered = ar_filter::filter_spahshots(orig)?;
             if let Some(pg_table_dest) = pg_table_dest {
-                ar_store::set_kv_postgres(pg_table_dest, filtered)?;
+                pg.set_kv_postgres(pg_table_dest, filtered)?;
             } else {
                 for (k, v) in filtered {
                     println!("{:?}: {:?}", k, v);

@@ -2,14 +2,14 @@ use serde_json;
 use std::error::Error;
 use std::collections::BTreeSet;
 
-pub fn filter_spahshots(orig: Vec<(&str, &str)>) -> Result<Vec<(String, String)>, Box<Error>> {
+pub fn filter_spahshots(orig: Vec<(String, String)>) -> Result<Vec<(String, String)>, Box<Error>> {
     // TODO: rewrite as stream to handle unlimited number of values
     let mut filt: Vec<(String, String)> = Vec::new();
     let mut all: Vec<serde_json::Value> = vec![];
     orig.iter().try_fold(
         (),
-        |_: (), &(k, v): &(&str, &str)| -> Result<(), Box<Error>> {
-            let mut latest: Vec<serde_json::Value> = serde_json::from_str(v)?;
+        |_: (), &(ref k, ref v): &(String, String)| -> Result<(), Box<Error>> {
+            let mut latest: Vec<serde_json::Value> = serde_json::from_str(&v)?;
             merge(&mut all, &mut latest);
             let test = latest.clone();
             let v_filt = serde_json::to_string(&test)?;
@@ -68,15 +68,9 @@ pub fn merge(all: &mut Vec<serde_json::Value>, latest: &mut Vec<serde_json::Valu
 mod tests {
     #[test]
     fn not_filter_when_nothing_to() {
-        let orig = || vec![("a", r#"[{"a":"b","id":4}]"#)];
+        let orig = || vec![("a".to_string(), r#"[{"a":"b","id":4}]"#.to_string())];
         let filt = super::filter_spahshots(orig()).unwrap();
-        assert_eq!(
-            filt,
-            orig()
-                .into_iter()
-                .map(|(k, v)| (k.to_string(), v.to_string()))
-                .collect::<Vec<(String, String)>>()
-        );
+        assert_eq!(filt, orig());
     }
     #[test]
     fn filter_identical() {
@@ -86,7 +80,9 @@ mod tests {
                 ("b", r#"[{"a":"b","id":4}]"#),
                 ("c", r#"[{"a":"b","id":4}, {"e":{"r":321},"id":11}]"#),
                 ("d", r#"[{"a":"q","id":4}, {"e":{"r":321},"id":11}]"#),
-            ]
+            ].into_iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect::<Vec<(String, String)>>()
         };
         let expect = || {
             vec![
@@ -94,7 +90,9 @@ mod tests {
                 ("b", r#"[]"#),
                 ("c", r#"[{"e":{"r":321},"id":11}]"#),
                 ("d", r#"[{"a":"q","id":4}]"#),
-            ]
+            ].into_iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect::<Vec<(String, String)>>()
         };
         let filt = super::filter_spahshots(orig).unwrap();
         assert_eq!(
