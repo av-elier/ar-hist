@@ -1,6 +1,11 @@
 use clap::{App, Arg, SubCommand};
 
 pub fn ar_hist_app() -> App<'static, 'static> {
+    let pg_table_orig = Arg::with_name("pg-table-orig")
+        .long("pg-table-orig")
+        .takes_value(true)
+        .required(true)
+        .help("a table to get initiatives from");
     let app = App::new("ar-hist")
         .version("0.0.1")
         .author("av_elier")
@@ -39,7 +44,7 @@ pub fn ar_hist_app() -> App<'static, 'static> {
                         .help("ar initiative status filter"),
                 ),
         )
-        .subcommand(SubCommand::with_name("analyze")) // TODO: last day top gainers by votes, views, shares. Option to email (or telegram) results
+        .subcommand(SubCommand::with_name("analyze").arg(&pg_table_orig)) // TODO: last day top gainers by votes, views, shares. Option to email (or telegram) results
         .subcommand(
             SubCommand::with_name("migrate")
                 .arg(
@@ -51,11 +56,7 @@ pub fn ar_hist_app() -> App<'static, 'static> {
                         .help("filter-unchanged: removes exactly same initiatives from latter snapshot")
                 )
                 .arg(
-                    Arg::with_name("pg-table-orig")
-                        .long("pg-table-orig")
-                        .takes_value(true)
-                        .required(true)
-                        .help("a table to get initiatives from"),
+                    &pg_table_orig,
                 )
                 .arg(
                     Arg::with_name("pg-table-dest")

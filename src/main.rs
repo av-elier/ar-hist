@@ -13,6 +13,7 @@ extern crate openssl;
 extern crate postgres;
 extern crate redis;
 extern crate serde;
+#[macro_use]
 extern crate serde_json;
 extern crate tokio_core;
 
@@ -34,6 +35,7 @@ fn main() {
         Some(subcmd) => match subcmd.name.as_ref() {
             "download" => subcmds::download::call(subcmd.matches),
             "migrate" => subcmds::migrate::call(subcmd.matches),
+            "analyze" => subcmds::analyze::call(subcmd.matches),
             _ => panic!("impossible cli"),
         },
         _ => Ok(error!("unknown cli")),
