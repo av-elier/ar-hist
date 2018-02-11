@@ -1,4 +1,4 @@
-# ar-hist
+# ar-hist [![Build Status](https://travis-ci.org/av-elier/ar-hist.svg?branch=master)](https://travis-ci.org/av-elier/ar-hist)
 A Rust utility to take snapshots of initiatives from ar.rostov-gorod.ru and do some actions on them
 
 [WIP]
