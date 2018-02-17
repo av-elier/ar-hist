@@ -20,6 +20,14 @@ pub fn filter_spahshots(orig: Vec<(String, String)>) -> Result<Vec<(String, Stri
     Ok(filt)
 }
 
+pub fn merge_str(all: &str, latest: &str) -> Result<String, Box<Error>> {
+    let mut all_json: Vec<serde_json::Value> = serde_json::from_str(all)?;
+    let mut latest_json: Vec<serde_json::Value> = serde_json::from_str(latest)?;
+    merge(&mut all_json, &mut latest_json);
+    let s = serde_json::to_string(&all_json)?;
+    Ok(s)
+}
+
 pub fn merge(all: &mut Vec<serde_json::Value>, latest: &mut Vec<serde_json::Value>) {
     if all.is_empty() {
         all.append(&mut latest.clone());

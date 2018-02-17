@@ -2,7 +2,7 @@ use std::env;
 use std::error::Error;
 use postgres;
 use openssl::ssl::{SslConnector, SslConnectorBuilder, SslMethod, SSL_VERIFY_NONE};
-
+use ar_filter;
 pub struct ArPg {
     conn: postgres::Connection,
 }
@@ -64,5 +64,22 @@ impl ArPg {
         transaction.commit()?;
         debug!("inserting rows - commmitted");
         Ok(())
+    }
+
+    pub fn get_kv_merged(&self, table: &str) -> Result<Vec<(String, String)>, Box<Error>> {
+        debug!("selecting rows");
+        let rows: postgres::rows::Rows = self.conn
+            .query(format!("SELECT k, v FROM {}", table).as_str(), &[])?;
+        debug!("selected rows {:?}", rows.len());
+        let mut res: Vec<(String, String)> = vec![];
+        let mut all = String::from("[]");
+        for row in rows.iter() {
+            let row: postgres::rows::Row = row;
+            let k: String = row.get(0);
+            let mut v: String = row.get(1);
+            all = ar_filter::merge_str(&mut all, &mut v)?;
+            res.push((k, all.clone()));
+        }
+        Ok(res)
     }
 }

@@ -1,6 +1,6 @@
 use serde_json;
-// use chrono::Utc;
-// use chrono::DateTime;
+use std::error::Error;
+use chrono::{DateTime, Utc};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Initiative {
@@ -72,6 +72,34 @@ pub struct Initiative {
     // },
     pub statistic: ShareStatistic,
     // "department": null
+}
+
+impl Initiative {
+    pub fn lifetime_percent(&self) -> f64 {
+        let lt = self.try_lifetime_percent();
+        match lt {
+            Ok(x) => x,
+            Err(_) => 100.0,
+        }
+    }
+    fn try_lifetime_percent(&self) -> Result<f64, Box<Error>> {
+        let a = DateTime::parse_from_rfc3339(&self.created_at)?
+            .with_timezone(&Utc)
+            .timestamp() as f64;
+        let b = DateTime::parse_from_rfc3339(&self.expire_date)?
+            .with_timezone(&Utc)
+            .timestamp() as f64;
+        let x = Utc::now().timestamp() as f64;
+        let percent = (x - a) / (b - a) * 100.0;
+        let trunc_percent = if percent < 0.0 {
+            0.0
+        } else if percent > 100.0 {
+            100.0
+        } else {
+            percent
+        };
+        Ok(trunc_percent)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
