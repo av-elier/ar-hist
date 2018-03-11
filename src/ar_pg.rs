@@ -25,8 +25,10 @@ impl ArPg {
 
     pub fn get_kv_postgres(&self, table: &str) -> Result<Vec<(String, String)>, Box<Error>> {
         debug!("selecting rows");
-        let rows: postgres::rows::Rows = self.conn
-            .query(format!("SELECT k, v FROM {}", table).as_str(), &[])?;
+        let rows: postgres::rows::Rows = self.conn.query(
+            format!("SELECT k, v FROM {} ORDER BY k", table).as_str(),
+            &[],
+        )?;
         debug!("selected rows {:?}", rows.len());
         let mut res: Vec<(String, String)> = vec![];
         for row in rows.iter() {
@@ -68,8 +70,10 @@ impl ArPg {
 
     pub fn get_kv_merged(&self, table: &str) -> Result<Vec<(String, String)>, Box<Error>> {
         debug!("selecting rows");
-        let rows: postgres::rows::Rows = self.conn
-            .query(format!("SELECT k, v FROM {}", table).as_str(), &[])?;
+        let rows: postgres::rows::Rows = self.conn.query(
+            format!("SELECT k, v FROM {} ORDER BY k", table).as_str(),
+            &[],
+        )?;
         debug!("selected rows {:?}", rows.len());
         let mut res: Vec<(String, String)> = vec![];
         let mut all = String::from("[]");
