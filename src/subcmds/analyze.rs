@@ -4,6 +4,7 @@ use serde_json;
 use super::super::ar_pg;
 use super::super::ar_types;
 use chrono::{DateTime, Duration, Utc};
+use std::ops::Sub;
 
 pub fn call(matches: ArgMatches) -> Result<(), Box<Error>> {
     let pg = ar_pg::ArPg::new()?;
@@ -21,9 +22,15 @@ fn call_internal(pg: ar_pg::ArPg, table: &str) -> Result<(), Box<Error>> {
         let mut esss = Essential::parse(k.to_string(), v.to_string())?;
         essentials.append(&mut esss);
     }
+
+    essentials.drain_filter(|x| x.time.lt(&Utc::now().sub(Duration::hours(24 * 15))));
+
     essentials.sort_by(|x, y| x.time.cmp(&y.time));
 
     add_weekago_info(&mut essentials);
+
+    essentials.drain_filter(|x| x.time.lt(&Utc::now().sub(Duration::hours(24 * 8))));
+
     println!("{}", Essential::csv_header());
     for e in essentials.iter() {
         println!("{}", e.csv_line());
@@ -58,11 +65,14 @@ struct Essential {
     lifetime_percent: f64,
     cat_id: i32,
     cat_title: String,
+    user_id: i32,
+    user_fullname: String,
     views: i32,
     votes_total: i32,
     votes_positive: i32,
     votes_negative: i32,
     shares_all: i32,
+    comments_count: i32,
     status: String,
     title: String,
     views_weekagos: i32,
@@ -70,6 +80,7 @@ struct Essential {
     votes_positive_weekagos: i32,
     votes_negative_weekagos: i32,
     shares_all_weekagos: i32,
+    comments_count_weekagos: i32,
 }
 
 impl Essential {
@@ -79,11 +90,14 @@ impl Essential {
         lifetime_percent: f64,
         cat_id: i32,
         cat_title: String,
+        user_id: i32,
+        user_fullname: String,
         views: i32,
         votes_total: i32,
         votes_positive: i32,
         votes_negative: i32,
         shares_all: i32,
+        comments_count: i32,
         status: String,
         title: String,
     ) -> Essential {
@@ -93,11 +107,14 @@ impl Essential {
             lifetime_percent: lifetime_percent,
             cat_id: cat_id,
             cat_title: cat_title,
+            user_id: user_id,
+            user_fullname: user_fullname,
             views: views,
             votes_total: votes_total,
             votes_positive: votes_positive,
             votes_negative: votes_negative,
             shares_all: shares_all,
+            comments_count: comments_count,
             status: status,
             title: title,
             views_weekagos: views,
@@ -105,6 +122,7 @@ impl Essential {
             votes_positive_weekagos: votes_positive,
             votes_negative_weekagos: votes_negative,
             shares_all_weekagos: shares_all,
+            comments_count_weekagos: comments_count,
         }
     }
     fn with_weekagos(&mut self, other: &Essential) -> () {
@@ -113,6 +131,7 @@ impl Essential {
         self.votes_positive_weekagos = self.votes_positive - other.votes_positive;
         self.votes_negative_weekagos = self.votes_negative - other.votes_negative;
         self.shares_all_weekagos = self.shares_all - other.shares_all;
+        self.comments_count_weekagos = self.comments_count - other.comments_count;
     }
 
     fn parse(k: String, v: String) -> Result<Vec<Essential>, Box<Error>> {
@@ -129,11 +148,14 @@ impl Essential {
                     x.lifetime_percent(),
                     x.category.id,
                     x.category.title.clone(),
+                    x.user.id,
+                    x.user.fullname.clone(),
                     x.watch_count,
                     x.positive + x.negative,
                     x.positive,
                     x.negative,
                     x.statistic.sum(),
+                    x.comments_count,
                     x.status.to_string(),
                     str::replace(&x.title, ",", " ЗПТ"),
                 )
@@ -142,30 +164,40 @@ impl Essential {
     }
 
     fn csv_header() -> String {
-        "time,time_utc,lifetime_percent,id,cat_id,cat_title,views,votes_positive,votes_negative,votes_total,shares_all,status,title,views_weekagos,votes_total_weekagos,votes_positive_weekagos,votes_negative_weekagos,shares_all_weekagos"
+        "time,time_utc,lifetime_percent,id,cat_id,cat_title,user_id,user_fullname\
+         ,views,votes_positive,votes_negative,votes_total,shares_all,comments_count\
+         ,status,title,views_weekagos,votes_total_weekagos\
+         ,votes_positive_weekagos,votes_negative_weekagos,shares_all_weekagos,comments_count_weekagos"
             .to_string()
     }
     fn csv_line(&self) -> String {
         format!(
-            "{time},{time_utc},{lifetime_percent},{id},{cat_id},{cat_title},{views},{votes_positive},{votes_negative},{votes_total},{shares_all},{status},{title},{views_weekagos},{votes_total_weekagos},{votes_positive_weekagos},{votes_negative_weekagos},{shares_all_weekagos}",
+            "{time},{time_utc},{lifetime_percent},{id},{cat_id},{cat_title},{user_id},{user_fullname}\
+            ,{views},{votes_positive},{votes_negative},{votes_total},{shares_all},{comments_count}\
+            ,{status},{title},{views_weekagos},{votes_total_weekagos}\
+            ,{votes_positive_weekagos},{votes_negative_weekagos},{shares_all_weekagos},{comments_count_weekagos}",
             time = self.time,
             time_utc = self.time.timestamp(),
             id = self.id,
             lifetime_percent = self.lifetime_percent,
             cat_id = self.cat_id,
             cat_title = self.cat_title,
+            user_id = self.user_id,
+            user_fullname = self.user_fullname,
             views = self.views,
             votes_positive = self.votes_positive,
             votes_negative = self.votes_negative,
             votes_total = self.votes_total,
             shares_all = self.shares_all,
+            comments_count = self.comments_count,
             status = self.status,
             title = self.title,
             views_weekagos = self.views_weekagos,
             votes_total_weekagos = self.votes_total_weekagos,
             votes_positive_weekagos = self.votes_positive_weekagos,
             votes_negative_weekagos = self.votes_negative_weekagos,
-            shares_all_weekagos = self.shares_all_weekagos
+            shares_all_weekagos = self.shares_all_weekagos,
+            comments_count_weekagos = self.comments_count_weekagos
         )
     }
 }
