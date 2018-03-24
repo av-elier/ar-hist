@@ -1,3 +1,4 @@
+#![feature(drain_filter)]
 #![feature(iterator_try_fold)]
 #[macro_use]
 extern crate serde_derive;
@@ -13,8 +14,12 @@ extern crate openssl;
 extern crate postgres;
 extern crate redis;
 extern crate serde;
+#[cfg(test)]
 #[macro_use]
 extern crate serde_json;
+#[cfg(not(test))]
+extern crate serde_json;
+
 extern crate tokio_core;
 
 mod ar_types;
